@@ -68,7 +68,11 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a full file-by-file and concept-by-
 - `lib/crack.ts` — spawns `hashcat` (dictionary `-a 0`, then brute-force `-a 3` if the password is ≤7 chars) and `john` (dictionary attack + `--show` cross-check) against the hash, each capped at 20s wall-clock.
 - `lib/parseOutput.ts` — pure functions that read hashcat's `-o` outfile and John's `--show` stdout to determine whether the hash was cracked.
 - `app/api/analyze/route.ts` — orchestrates the above per submitted password, bounded to 5 passwords/request.
-- `data/sample-wordlist.txt` — a small bundled wordlist (~100 common passwords) so the dictionary attack works out of the box. Point `SAMPLE_WORDLIST` in `lib/crack.ts` at a larger list (e.g. `rockyou.txt`) for more realistic results — don't bundle a multi-hundred-MB wordlist into the repo.
+- `data/common-passwords.txt` — 100,000 real-world passwords by frequency ([SecLists](https://github.com/danielmiessler/SecLists)' `xato-net-10-million-passwords-100000.txt`, MIT licensed — see Attribution below), so the dictionary attack reflects actual breach data out of the box. Point `COMMON_PASSWORDS_WORDLIST` in `lib/crack.ts` at an even larger list (e.g. the full `xato-net-10-million-passwords.txt`, or `rockyou.txt`) for more coverage — dictionary attacks stay fast even at this size (hashcat/John are comparing hashes, not doing anything CPU-heavy per word), so the limiting factor is repo size, not runtime.
+
+## Attribution
+
+`data/common-passwords.txt` is sourced from [SecLists](https://github.com/danielmiessler/SecLists) (`Passwords/Common-Credentials/xato-net-10-million-passwords-100000.txt`), MIT licensed, originally compiled by Mark Burnett.
 
 ## Safety notes
 

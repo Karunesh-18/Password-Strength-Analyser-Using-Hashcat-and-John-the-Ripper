@@ -98,8 +98,9 @@ This is the core of the app. For one password's hash, it:
    never collide).
 2. **Runs hashcat twice:**
    - `-a 0` (**dictionary attack**): try every word in
-     `data/sample-wordlist.txt`. This is what catches "did someone just pick
-     a common password."
+     `data/common-passwords.txt` (100,000 real breached passwords by
+     frequency). This is what catches "did someone just pick a common
+     password."
    - `-a 3` (**brute-force / mask attack**): try every possible character
      combination at the password's exact length, using the `?a` charset
      (all printable ASCII). Only attempted if the password is **≤7
@@ -152,13 +153,18 @@ JSON. The 5-password cap keeps total request time (and total CPU burned on
 your machine) bounded, since every password runs up to three real attack
 processes.
 
-### `data/sample-wordlist.txt`
-~100 extremely common passwords (`password123`, `qwerty`, `letmein`, Star
-Wars references, etc.) bundled directly in the repo so the dictionary attack
-works immediately without downloading anything. For a more realistic test,
-point `SAMPLE_WORDLIST` in `lib/crack.ts` at a real wordlist like
-[rockyou.txt](https://github.com/brannondorsey/naive-hashcat/releases) — it's
-not bundled here because it's hundreds of MB and doesn't belong in git.
+### `data/common-passwords.txt`
+100,000 real-world passwords ranked by how often they actually showed up in
+breach data — [SecLists](https://github.com/danielmiessler/SecLists)'
+`xato-net-10-million-passwords-100000.txt` (MIT licensed, originally
+compiled by Mark Burnett). Bundled directly (~760KB) so the dictionary
+attack reflects real password-choosing behavior out of the box, not a
+hand-picked token list. Dictionary attacks stay fast at this size — hashcat/
+John are comparing hashes, millions of candidates per second, so 100k
+entries adds essentially no runtime over a 100-entry list. For even more
+coverage, point `COMMON_PASSWORDS_WORDLIST` in `lib/crack.ts` at the full
+10-million-entry version of the same file, or `rockyou.txt` — those aren't
+bundled here because multi-hundred-MB text files don't belong in git.
 
 ### Frontend (`app/page.tsx`, `components/`)
 - `app/page.tsx` — the form: a textarea (one password per line), an

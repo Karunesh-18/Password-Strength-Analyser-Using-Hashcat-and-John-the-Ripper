@@ -5,7 +5,13 @@ import path from "path";
 import { HASHCAT_MODE, JOHN_FORMAT, type HashAlgo } from "./hash";
 import { parseHashcatOutfile, parseJohnShowOutput } from "./parseOutput";
 
-const SAMPLE_WORDLIST = path.join(process.cwd(), "data", "sample-wordlist.txt");
+// 100k real-world passwords by frequency (SecLists' xato-net-10-million-
+// passwords-100000.txt, MIT licensed) — see README for attribution.
+const COMMON_PASSWORDS_WORDLIST = path.join(
+  process.cwd(),
+  "data",
+  "common-passwords.txt"
+);
 // ponytail: fixed time caps rather than a configurable job system — fine for
 // a single-request, single-user local tool. Raise if real attacks need more.
 const DICTIONARY_TIMEOUT_MS = 20_000;
@@ -125,7 +131,7 @@ async function runHashcat(
         [
           "-m", mode, "-a", "0", "--quiet", "--potfile-disable",
           "--session", `${sessionId}-dict`,
-          "-o", outFile, hashFile, SAMPLE_WORDLIST,
+          "-o", outFile, hashFile, COMMON_PASSWORDS_WORDLIST,
         ],
         DICTIONARY_TIMEOUT_MS
       )
@@ -204,7 +210,7 @@ async function runJohn(
   // refuses to start with "Crash recovery file is locked".
   const { timedOut, timeMs, spawnError } = await runWithTimeout(
     "john",
-    [`--format=${format}`, `--wordlist=${SAMPLE_WORDLIST}`, hashFile],
+    [`--format=${format}`, `--wordlist=${COMMON_PASSWORDS_WORDLIST}`, hashFile],
     DICTIONARY_TIMEOUT_MS,
     workDir
   );
