@@ -63,6 +63,12 @@ function runWithTimeout(
     });
     child.on("close", () => {
       clearTimeout(killer);
+      // With shell:true, a missing command doesn't fire the 'error' event —
+      // cmd.exe itself launches fine, prints "not recognized", and exits.
+      // Catch that case explicitly instead of silently reporting "not cracked".
+      if (!spawnError && /is not recognized as .* command/i.test(stderr)) {
+        spawnError = `${cmd} not found on PATH (is it installed? see README)`;
+      }
       resolve({ stdout, stderr, timedOut, timeMs: Date.now() - start, spawnError });
     });
   });
