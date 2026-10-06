@@ -12,6 +12,22 @@ const DICTIONARY_TIMEOUT_MS = 20_000;
 const BRUTE_FORCE_TIMEOUT_MS = 20_000;
 const BRUTE_FORCE_MAX_LEN = 7; // longer = not worth a live brute-force attempt
 
+// ponytail: global lock around hashcat invocations. hashcat processes race
+// for the same GPU device and intermittently fail with "Already an instance
+// ... running" when several launch within microseconds of each other (e.g.
+// one request analyzing multiple passwords via Promise.all) — even with
+// unique --session names. Since they'd all serialize on the GPU anyway,
+// queuing them app-side avoids the race instead of fighting it. John runs
+// on CPU and isn't affected, so it stays concurrent. Upgrade to a real job
+// queue if this ever needs to run multiple hashcat jobs truly in parallel
+// (e.g. multiple GPUs).
+let hashcatQueue: Promise<unknown> = Promise.resolve();
+function runHashcatSerialized<T>(fn: () => Promise<T>): Promise<T> {
+  const run = hashcatQueue.then(fn, fn);
+  hashcatQueue = run.catch(() => {});
+  return run;
+}
+
 export type AttackOutcome = {
   tool: "hashcat" | "john";
   method: "dictionary" | "brute-force" | "dictionary-crosscheck";
@@ -68,6 +84,9 @@ function runWithTimeout(
       // Catch that case explicitly instead of silently reporting "not cracked".
       if (!spawnError && /is not recognized as .* command/i.test(stderr)) {
         spawnError = `${cmd} not found on PATH (is it installed? see README)`;
+      } else if (!spawnError && /already an instance .* running/i.test(stdout + stderr)) {
+        // hashcat refuses to run twice under the same --session name at once.
+        spawnError = `${cmd} refused to start: another instance was already running (session name collision)`;
       }
       resolve({ stdout, stderr, timedOut, timeMs: Date.now() - start, spawnError });
     });
@@ -85,18 +104,29 @@ async function runHashcat(
   const hashFile = path.join(workDir, "hash.txt");
   await writeFile(hashFile, hash + "\n");
 
+  // hashcat refuses to run two instances under the same session name at
+  // once ("Already an instance ... running"). Its session/lock file lives
+  // relative to its own install dir (see hashcat.bat), not our per-request
+  // workDir, so concurrent passwords in one request — or concurrent
+  // requests — collide unless each gets a name unique to this run.
+  // path.basename(workDir) is already unique (mkdtemp), so reuse it.
+  const sessionId = path.basename(workDir);
+
   const outcomes: AttackOutcome[] = [];
 
   // Dictionary attack.
   {
     const outFile = path.join(workDir, "hc-dict-out.txt");
-    const { timedOut, timeMs, spawnError } = await runWithTimeout(
-      "hashcat",
-      [
-        "-m", mode, "-a", "0", "--quiet", "--potfile-disable",
-        "-o", outFile, hashFile, SAMPLE_WORDLIST,
-      ],
-      DICTIONARY_TIMEOUT_MS
+    const { timedOut, timeMs, spawnError } = await runHashcatSerialized(() =>
+      runWithTimeout(
+        "hashcat",
+        [
+          "-m", mode, "-a", "0", "--quiet", "--potfile-disable",
+          "--session", `${sessionId}-dict`,
+          "-o", outFile, hashFile, SAMPLE_WORDLIST,
+        ],
+        DICTIONARY_TIMEOUT_MS
+      )
     );
     const parsed = await readOutfileSafe(outFile);
     outcomes.push({
@@ -115,13 +145,16 @@ async function runHashcat(
   if (passwordLength <= BRUTE_FORCE_MAX_LEN) {
     const outFile = path.join(workDir, "hc-brute-out.txt");
     const mask = "?a".repeat(passwordLength);
-    const { timedOut, timeMs, spawnError } = await runWithTimeout(
-      "hashcat",
-      [
-        "-m", mode, "-a", "3", "--quiet", "--potfile-disable",
-        "-o", outFile, hashFile, mask,
-      ],
-      BRUTE_FORCE_TIMEOUT_MS
+    const { timedOut, timeMs, spawnError } = await runHashcatSerialized(() =>
+      runWithTimeout(
+        "hashcat",
+        [
+          "-m", mode, "-a", "3", "--quiet", "--potfile-disable",
+          "--session", `${sessionId}-brute`,
+          "-o", outFile, hashFile, mask,
+        ],
+        BRUTE_FORCE_TIMEOUT_MS
+      )
     );
     const parsed = await readOutfileSafe(outFile);
     outcomes.push({
