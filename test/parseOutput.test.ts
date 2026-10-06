@@ -4,6 +4,8 @@ import { parseHashcatOutfile, parseJohnShowOutput } from "../lib/parseOutput";
 import { scorePassword } from "../lib/heuristic";
 import { hashPassword } from "../lib/hash";
 import { md4 } from "../lib/md4";
+import { buildVerdict } from "../lib/verdict";
+import type { AttackOutcome } from "../lib/crack";
 
 test("parseHashcatOutfile: empty content means not cracked", () => {
   assert.deepEqual(parseHashcatOutfile(""), { cracked: false, plaintext: null });
@@ -66,4 +68,60 @@ test("hashPassword: ntlm matches a known vector for 'password'", () => {
     hashPassword("password", "ntlm"),
     "8846f7eaee8fb117ad06bdd830b7586c"
   );
+});
+
+function attack(overrides: Partial<AttackOutcome>): AttackOutcome {
+  return {
+    tool: "hashcat",
+    method: "dictionary",
+    cracked: false,
+    plaintext: null,
+    timedOut: false,
+    timeMs: 100,
+    ...overrides,
+  };
+}
+
+const heuristic = {
+  score: 0 as const,
+  label: "Very Weak" as const,
+  guesses: 100,
+  crackTimeDisplay: "less than a second",
+  suggestions: ["Add more words that are less common."],
+};
+
+test("buildVerdict: dictionary crack overrides the generic heuristic suggestion", () => {
+  const verdict = buildVerdict(
+    heuristic,
+    [attack({ cracked: true, plaintext: "password", timeMs: 200 })],
+    8
+  );
+  assert.match(verdict.headline, /Cracked by hashcat/);
+  assert.match(verdict.headline, /common password lists/);
+  assert.ok(
+    !verdict.suggestions.includes("Add more words that are less common."),
+    "should not fall back to the vague zxcvbn suggestion once a real crack happened"
+  );
+});
+
+test("buildVerdict: brute-force crack calls out the password length", () => {
+  const verdict = buildVerdict(
+    heuristic,
+    [attack({ tool: "hashcat", method: "brute-force", cracked: true, timeMs: 3000 })],
+    5
+  );
+  assert.match(verdict.headline, /brute force/);
+  assert.match(verdict.suggestions[0], /5 characters/);
+});
+
+test("buildVerdict: nothing cracked falls back to the heuristic estimate, with a caveat", () => {
+  const verdict = buildVerdict(
+    heuristic,
+    [attack({ cracked: false }), attack({ tool: "john", method: "dictionary-crosscheck" })],
+    20
+  );
+  assert.match(verdict.headline, /Not cracked/);
+  assert.match(verdict.headline, /less than a second/);
+  assert.match(verdict.headline, /inconclusive/);
+  assert.deepEqual(verdict.suggestions, heuristic.suggestions);
 });

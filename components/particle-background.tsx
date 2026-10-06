@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 
-// Cyan/emerald "hacker" accent tint, low alpha so it reads as texture
-// rather than competing with foreground content.
+// Matrix-green terminal tint — a bright and a dimmer green for depth.
 const COLORS = [
-  "rgba(34, 211, 238, 0.55)", // cyan-400
-  "rgba(52, 211, 153, 0.55)", // emerald-400
+  "rgba(74, 222, 128, 0.7)", // green-400
+  "rgba(34, 197, 94, 0.5)", // green-500
 ];
+const GLOW_COLOR = "rgba(74, 222, 128, 0.9)";
 const MAX_PARTICLES = 80;
 const AREA_PER_PARTICLE = 18_000; // px^2 — controls density on large screens
 
@@ -54,6 +54,8 @@ export function ParticleBackground() {
     function resize() {
       width = window.innerWidth;
       height = window.innerHeight;
+      // Assigning width/height resets the canvas bitmap AND its transform
+      // to identity, so the scale below never compounds across resizes.
       canvas!.width = width * dpr;
       canvas!.height = height * dpr;
       canvas!.style.width = `${width}px`;
@@ -64,6 +66,8 @@ export function ParticleBackground() {
 
     function draw() {
       ctx!.clearRect(0, 0, width, height);
+      ctx!.shadowBlur = 6;
+      ctx!.shadowColor = GLOW_COLOR;
       for (const p of particles) {
         ctx!.beginPath();
         ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);

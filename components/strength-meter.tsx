@@ -2,12 +2,13 @@
 
 import { motion } from "framer-motion";
 
+// Weak -> strong, red through amber to the theme's terminal green.
 const SCORE_COLOR = [
   "bg-red-500",
   "bg-orange-500",
-  "bg-yellow-500",
-  "bg-lime-500",
-  "bg-green-500",
+  "bg-amber-400",
+  "bg-lime-400",
+  "bg-primary",
 ];
 
 export function StrengthMeter({
@@ -29,7 +30,7 @@ export function StrengthMeter({
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <motion.div
-          className={`h-full rounded-full ${SCORE_COLOR[score]}`}
+          className={`glow-box h-full rounded-full ${SCORE_COLOR[score]}`}
           initial={{ width: 0 }}
           animate={{ width: `${((score + 1) / 5) * 100}%` }}
           transition={{ duration: 0.4, ease: "easeOut" }}

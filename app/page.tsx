@@ -65,28 +65,32 @@ export default function Home() {
   return (
     <>
       <ParticleBackground />
-      <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black sm:px-8">
+      {/* `relative` is required: a plain static element always paints above
+          a fixed/-z-10 sibling regardless of its z-index value, so without
+          this the particle canvas would be fully hidden behind this page's
+          own content no matter how transparent that content's background is. */}
+      <div className="relative min-h-screen px-4 py-10 sm:px-8">
         <div className="mx-auto max-w-3xl space-y-8">
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-2"
           >
-            <h1 className="text-3xl font-bold tracking-tight">
-              Password Strength Analysis
+            <h1 className="glow-text text-3xl font-bold tracking-tight text-primary">
+              password_strength.exe
             </h1>
             <p className="text-muted-foreground">
-              Hashes your input and runs real hashcat + John the Ripper dictionary
-              / brute-force attacks (time-boxed) alongside an instant heuristic
-              score.
+              Hashes each password, then throws real hashcat + John the Ripper
+              at it — dictionary and brute-force, time-boxed — next to an
+              instant pattern-based score.
             </p>
-            <p className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-700 dark:text-yellow-400">
-              ⚠️ Only enter passwords you own for testing — never real account
-              credentials belonging to someone else. Nothing is stored.
+            <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-400">
+              ⚠️ Use your own test passwords only, not real account
+              credentials. Nothing is stored.
             </p>
           </motion.div>
 
-          <div className="space-y-3 rounded-lg border bg-background p-4">
+          <div className="space-y-3 rounded-lg border bg-card p-4">
             <label className="text-sm font-medium" htmlFor="passwords">
               Test passwords (one per line, up to 5)
             </label>
@@ -110,7 +114,7 @@ export default function Home() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={handleAnalyze} disabled={loading}>
+              <Button onClick={handleAnalyze} disabled={loading} className="glow-box">
                 {loading ? "Analyzing… (may take up to ~40s)" : "Analyze"}
               </Button>
             </div>

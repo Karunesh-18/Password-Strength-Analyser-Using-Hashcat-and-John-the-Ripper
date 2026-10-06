@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hashPassword, type HashAlgo } from "@/lib/hash";
 import { scorePassword } from "@/lib/heuristic";
 import { runCrackers } from "@/lib/crack";
+import { buildVerdict } from "@/lib/verdict";
 
 const VALID_ALGOS: HashAlgo[] = ["md5", "sha1", "sha256", "ntlm"];
 const MAX_PASSWORDS_PER_REQUEST = 5; // keep total cracking time bounded
@@ -45,12 +46,14 @@ export async function POST(request: Request) {
       const heuristic = scorePassword(password);
       const hash = hashPassword(password, algo as HashAlgo);
       const attacks = await runCrackers(hash, algo as HashAlgo, password.length);
+      const verdict = buildVerdict(heuristic, attacks, password.length);
       return {
         passwordLength: password.length,
         algo,
         hash,
         heuristic,
         attacks,
+        verdict,
       };
     })
   );

@@ -33,6 +33,10 @@ export type AnalysisResult = {
     suggestions: string[];
   };
   attacks: Attack[];
+  verdict: {
+    headline: string;
+    suggestions: string[];
+  };
 };
 
 const METHOD_LABEL: Record<Attack["method"], string> = {
@@ -54,8 +58,11 @@ export function ResultsCard({ result, index }: { result: AnalysisResult; index: 
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Password #{index + 1}</CardTitle>
-            <Badge variant={anyCracked ? "destructive" : "default"}>
-              {anyCracked ? "Cracked" : "Held (within time budget)"}
+            <Badge
+              variant={anyCracked ? "destructive" : "default"}
+              className="glow-box"
+            >
+              {anyCracked ? "Cracked" : "Not cracked"}
             </Badge>
           </div>
           <CardDescription className="font-mono text-xs break-all">
@@ -64,14 +71,21 @@ export function ResultsCard({ result, index }: { result: AnalysisResult; index: 
         </CardHeader>
         <CardContent className="space-y-4">
           <StrengthMeter score={result.heuristic.score} label={result.heuristic.label} />
-          <p className="text-sm text-muted-foreground">
-            Estimated offline crack time (heuristic): {result.heuristic.crackTimeDisplay}
-          </p>
+
+          <p className="text-sm">{result.verdict.headline}</p>
+
+          {result.verdict.suggestions.length > 0 && (
+            <ul className="list-inside list-disc text-sm text-muted-foreground">
+              {result.verdict.suggestions.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+          )}
 
           <Separator />
 
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold">Real-world attack results</h4>
+            <h4 className="text-sm font-semibold">Attack details</h4>
             {result.attacks.map((attack, i) => (
               <div
                 key={i}
@@ -94,20 +108,6 @@ export function ResultsCard({ result, index }: { result: AnalysisResult; index: 
               </div>
             ))}
           </div>
-
-          {result.heuristic.suggestions.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="text-sm font-semibold">Suggestions</h4>
-                <ul className="mt-1 list-inside list-disc text-sm text-muted-foreground">
-                  {result.heuristic.suggestions.map((s, i) => (
-                    <li key={i}>{s}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
         </CardContent>
       </Card>
     </motion.div>
