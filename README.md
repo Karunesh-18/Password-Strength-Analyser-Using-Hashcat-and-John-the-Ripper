@@ -9,19 +9,34 @@ A dashboard that scores a password two ways:
 
 ## 1. Install the cracking tools (Windows)
 
-Neither tool has an official winget/choco package, so install manually:
+Neither tool has an official winget/choco package, so install manually, then
+put a thin wrapper `.bat` on `PATH` rather than the install folder itself —
+hashcat specifically needs its own folder as the working directory (it loads
+`OpenCL\` kernel files via relative paths), so a wrapper that `cd`s there is
+more reliable than just adding the folder to `PATH`.
 
 ### hashcat
-1. Download the latest Windows binary: https://hashcat.net/hashcat/ → get the `.7z` from the download link (currently `hashcat-7.1.2.7z`).
-2. Extract it (7-Zip, or `winget install 7zip.7zip` first if you don't have an extractor).
-3. Add the extracted folder (containing `hashcat.exe`) to your `PATH`.
+1. Download the latest Windows binary: https://hashcat.net/hashcat/ → get the `.7z` (currently `hashcat-7.1.2.7z`) and extract it (7-Zip, or `winget install 7zip.7zip` first if you don't have an extractor) to e.g. `C:\Program Files\hashcat-7.1.2\hashcat-7.1.2`.
+2. Create `%USERPROFILE%\bin\hashcat.bat`:
+   ```bat
+   @echo off
+   set "original_dir=%CD%"
+   cd /d "C:\Program Files\hashcat-7.1.2\hashcat-7.1.2"
+   .\hashcat.exe %*
+   cd /d "%original_dir%"
+   ```
+3. Add `%USERPROFILE%\bin` to your user `PATH` (System Properties → Environment Variables, or `[Environment]::SetEnvironmentVariable('PATH', $env:PATH + ';' + "$HOME\bin", 'User')` in PowerShell), then open a **new** terminal.
 4. Verify: `hashcat --version`
 
 ### John the Ripper (Jumbo)
-1. Download the Windows build from https://www.openwall.com/john/ (or the GitHub releases at https://github.com/openwall/john).
-2. Extract the zip. The binaries live in the `run\` subfolder.
-3. Add `run\` to your `PATH` so `john.exe` resolves.
-4. Verify: `john --version`
+1. Download the Windows build from https://www.openwall.com/john/ (or the GitHub releases at https://github.com/openwall/john) and extract it to e.g. `C:\Program Files\john-1.9.0-jumbo-1-win64`. The binaries live in its `run\` subfolder.
+2. Create `%USERPROFILE%\bin\john.bat`:
+   ```bat
+   @echo off
+   "C:\Program Files\john-1.9.0-jumbo-1-win64\john-1.9.0-jumbo-1-win64\run\john.exe" %*
+   ```
+3. Same `PATH` step as above (shared with hashcat).
+4. Verify: `john` (no `--version` flag in Jumbo — running with no args prints the version banner and usage).
 
 If either command isn't found, the dashboard still works — the corresponding attack result will show a "tool error" badge instead of crashing.
 

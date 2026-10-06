@@ -26,7 +26,8 @@ export type AttackOutcome = {
 function runWithTimeout(
   cmd: string,
   args: string[],
-  timeoutMs: number
+  timeoutMs: number,
+  cwd?: string
 ): Promise<{
   stdout: string;
   stderr: string;
@@ -36,7 +37,15 @@ function runWithTimeout(
 }> {
   return new Promise((resolve) => {
     const start = Date.now();
-    const child = spawn(cmd, args, { windowsHide: true });
+    // shell:true is required on Windows so a PATH entry resolving to a .bat
+    // wrapper (common for hand-installed CLI tools) actually runs; args here
+    // are always our own constants/file paths, never raw user input, so this
+    // doesn't reopen the usual shell-injection risk.
+    const child = spawn(cmd, args, {
+      windowsHide: true,
+      shell: process.platform === "win32",
+      cwd,
+    });
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -133,16 +142,21 @@ async function runJohn(
   const hashFile = path.join(workDir, "john-hash.txt");
   await writeFile(hashFile, `testuser:${hash}\n`);
 
-  const { timedOut, timeMs, stderr, spawnError } = await runWithTimeout(
+  // cwd: workDir keeps each run's john.rec (crash-recovery) file isolated —
+  // without it, concurrent requests all write to the project root and John
+  // refuses to start with "Crash recovery file is locked".
+  const { timedOut, timeMs, spawnError } = await runWithTimeout(
     "john",
     [`--format=${format}`, `--wordlist=${SAMPLE_WORDLIST}`, hashFile],
-    DICTIONARY_TIMEOUT_MS
+    DICTIONARY_TIMEOUT_MS,
+    workDir
   );
 
   const show = await runWithTimeout(
     "john",
     [`--format=${format}`, "--show", hashFile],
-    5_000
+    5_000,
+    workDir
   );
   const parsed = parseJohnShowOutput(show.stdout);
 
@@ -153,7 +167,9 @@ async function runJohn(
     plaintext: parsed.plaintext,
     timedOut,
     timeMs,
-    error: spawnError ?? (stderr.trim() ? stderr.trim().slice(0, 500) : undefined),
+    // Only a real spawn failure (tool missing) counts as an error — John
+    // writes normal progress/status noise to stderr even on a successful run.
+    error: spawnError ?? undefined,
   };
 }
 
