@@ -36,6 +36,8 @@ export type AttackOutcome = {
   timedOut: boolean;
   timeMs: number;
   error?: string;
+  skipped?: boolean;
+  skipReason?: string;
 };
 
 /** Runs a command, enforcing a hard timeout by killing the child process. */
@@ -165,6 +167,22 @@ async function runHashcat(
       timedOut,
       timeMs,
       error: spawnError ?? undefined,
+    });
+  } else {
+    // Surface *why* brute-force didn't run, instead of silently omitting
+    // the row — keyspace grows exponentially with length (95^N for the
+    // full printable-ASCII charset), so beyond BRUTE_FORCE_MAX_LEN it's
+    // not a matter of "slower," it's not finishing in any practical time.
+    const keyspaceExponent = Math.round(passwordLength * Math.log10(95));
+    outcomes.push({
+      tool: "hashcat",
+      method: "brute-force",
+      cracked: false,
+      plaintext: null,
+      timedOut: false,
+      timeMs: 0,
+      skipped: true,
+      skipReason: `Skipped — at ${passwordLength} characters the keyspace is ~10^${keyspaceExponent} combinations, far beyond what's feasible to exhaust live (brute-force only runs for passwords ≤${BRUTE_FORCE_MAX_LEN} characters here).`,
     });
   }
 

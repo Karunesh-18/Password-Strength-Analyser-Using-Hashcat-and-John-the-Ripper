@@ -50,6 +50,17 @@ test("scorePassword: flags a long random passphrase as strong", () => {
   assert.ok(result.score >= 3, `expected strong score, got ${result.score}`);
 });
 
+test("scorePassword: catches 'name + short number' even when the name isn't in zxcvbn's dictionary", () => {
+  const result = scorePassword("Karunesh_13");
+  assert.ok(result.score <= 1, `expected weak score, got ${result.score}`);
+  assert.match(result.suggestions[0], /word \+ short number/);
+});
+
+test("scorePassword: 'name + short number' pattern also catches no-separator and lowercase forms", () => {
+  assert.ok(scorePassword("Jordan99").score <= 1);
+  assert.ok(scorePassword("rosebud7").score <= 1);
+});
+
 test("hashPassword: sha256 matches a known vector", () => {
   assert.equal(
     hashPassword("password", "sha256"),

@@ -20,6 +20,8 @@ type Attack = {
   timedOut: boolean;
   timeMs: number;
   error?: string;
+  skipped?: boolean;
+  skipReason?: string;
 };
 
 export type AnalysisResult = {
@@ -87,24 +89,28 @@ export function ResultsCard({ result, index }: { result: AnalysisResult; index: 
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Attack details</h4>
             {result.attacks.map((attack, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-              >
-                <span>{METHOD_LABEL[attack.method]}</span>
-                <span className="flex items-center gap-2">
-                  {attack.error ? (
-                    <Badge variant="outline">tool error</Badge>
-                  ) : attack.cracked ? (
-                    <Badge variant="destructive">
-                      cracked: &quot;{attack.plaintext}&quot; in {(attack.timeMs / 1000).toFixed(1)}s
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">
-                      {attack.timedOut ? "not cracked (time budget hit)" : "not cracked"}
-                    </Badge>
-                  )}
-                </span>
+              <div key={i} className="rounded-md border px-3 py-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span>{METHOD_LABEL[attack.method]}</span>
+                  <span className="flex items-center gap-2">
+                    {attack.skipped ? (
+                      <Badge variant="outline">skipped</Badge>
+                    ) : attack.error ? (
+                      <Badge variant="outline">tool error</Badge>
+                    ) : attack.cracked ? (
+                      <Badge variant="destructive">
+                        cracked: &quot;{attack.plaintext}&quot; in {(attack.timeMs / 1000).toFixed(1)}s
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">
+                        {attack.timedOut ? "not cracked (time budget hit)" : "not cracked"}
+                      </Badge>
+                    )}
+                  </span>
+                </div>
+                {attack.skipReason && (
+                  <p className="mt-1 text-xs text-muted-foreground">{attack.skipReason}</p>
+                )}
               </div>
             ))}
           </div>
