@@ -40,6 +40,8 @@ more reliable than just adding the folder to `PATH`.
 
 If either command isn't found, the dashboard still works — the corresponding attack result will show a "tool error" badge instead of crashing.
 
+> **Already have `npm run dev` running?** PATH changes only apply to *new* processes. Stop the dev server and restart it (new terminal or just re-run `npm run dev`) after adding `%USERPROFILE%\bin` to PATH, otherwise hashcat/John will show as "tool error" even though they're installed correctly.
+
 ## 2. Run the app
 
 ```bash
@@ -59,7 +61,9 @@ Covers hash correctness (including the hand-rolled MD4 for NTLM, since Node's Op
 
 ## How it works
 
-- `lib/hash.ts` — hashes the input password (MD5 / SHA-1 / SHA-256 / NTLM).
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for a full file-by-file and concept-by-concept walkthrough (hashing, zxcvbn heuristic scoring, how hashcat/John are actually invoked, output parsing, error handling, the UI). Short version:
+
+- `lib/hash.ts` + `lib/md4.ts` — hashes the input password (MD5 / SHA-1 / SHA-256 / NTLM).
 - `lib/heuristic.ts` — zxcvbn-ts score, independent of any cracking attempt.
 - `lib/crack.ts` — spawns `hashcat` (dictionary `-a 0`, then brute-force `-a 3` if the password is ≤7 chars) and `john` (dictionary attack + `--show` cross-check) against the hash, each capped at 20s wall-clock.
 - `lib/parseOutput.ts` — pure functions that read hashcat's `-o` outfile and John's `--show` stdout to determine whether the hash was cracked.
