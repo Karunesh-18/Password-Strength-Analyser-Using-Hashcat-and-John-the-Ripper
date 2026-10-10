@@ -6,12 +6,13 @@ import { HASHCAT_MODE, JOHN_FORMAT, type HashAlgo } from "./hash";
 import { parseHashcatOutfile, parseJohnShowOutput } from "./parseOutput";
 
 // 100k real-world passwords by frequency (SecLists' xato-net-10-million-
-// passwords-100000.txt, MIT licensed) — see README for attribution.
-const COMMON_PASSWORDS_WORDLIST = path.join(
-  process.cwd(),
-  "data",
-  "common-passwords.txt"
-);
+// passwords-100000.txt, MIT licensed) — see README for attribution. Override
+// with WORDLIST_PATH (e.g. a local rockyou.txt) for a bigger dictionary;
+// dictionary attacks stay fast even at that size since hashcat/John are just
+// comparing hashes, not doing anything CPU-heavy per word.
+const COMMON_PASSWORDS_WORDLIST =
+  process.env.WORDLIST_PATH ||
+  path.join(process.cwd(), "data", "common-passwords.txt");
 // ponytail: fixed time caps rather than a configurable job system — fine for
 // a single-request, single-user local tool. Raise if real attacks need more.
 const DICTIONARY_TIMEOUT_MS = 20_000;

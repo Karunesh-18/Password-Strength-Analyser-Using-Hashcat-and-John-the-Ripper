@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ResultsCard, type AnalysisResult } from "@/components/results-card";
 import { ParticleBackground } from "@/components/particle-background";
+import { Nav } from "@/components/nav";
 
 const ALGOS = [
   { value: "sha256", label: "SHA-256" },
@@ -71,6 +72,7 @@ export default function Home() {
           own content no matter how transparent that content's background is. */}
       <div className="relative min-h-screen px-4 py-10 sm:px-8">
         <div className="mx-auto max-w-3xl space-y-8">
+          <Nav />
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -83,10 +85,6 @@ export default function Home() {
               Hashes each password, then throws real hashcat + John the Ripper
               at it — dictionary and brute-force, time-boxed — next to an
               instant pattern-based score.
-            </p>
-            <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-400">
-              ⚠️ Use your own test passwords only, not real account
-              credentials. Nothing is stored.
             </p>
           </motion.div>
 

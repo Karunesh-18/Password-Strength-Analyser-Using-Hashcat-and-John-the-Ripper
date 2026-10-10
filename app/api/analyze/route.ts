@@ -3,6 +3,7 @@ import { hashPassword, type HashAlgo } from "@/lib/hash";
 import { scorePassword } from "@/lib/heuristic";
 import { runCrackers } from "@/lib/crack";
 import { buildVerdict } from "@/lib/verdict";
+import { logAnalysis } from "@/lib/analysis-log";
 
 const VALID_ALGOS: HashAlgo[] = ["md5", "sha1", "sha256", "ntlm"];
 const MAX_PASSWORDS_PER_REQUEST = 5; // keep total cracking time bounded
@@ -47,7 +48,8 @@ export async function POST(request: Request) {
       const hash = hashPassword(password, algo as HashAlgo);
       const attacks = await runCrackers(hash, algo as HashAlgo, password.length);
       const verdict = buildVerdict(heuristic, attacks, password.length);
-      return {
+      const result = {
+        password,
         passwordLength: password.length,
         algo,
         hash,
@@ -55,6 +57,12 @@ export async function POST(request: Request) {
         attacks,
         verdict,
       };
+      // Storage is optional and best-effort — never let a logging failure
+      // break the analyze response.
+      logAnalysis(result).catch((err) =>
+        console.error("[analysis-log] failed to persist:", err)
+      );
+      return result;
     })
   );
 

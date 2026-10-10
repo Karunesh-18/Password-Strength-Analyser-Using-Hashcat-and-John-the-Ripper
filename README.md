@@ -5,7 +5,7 @@ A dashboard that scores a password two ways:
 1. **Instant heuristic** — [zxcvbn-ts](https://github.com/zxcvbn-ts/zxcvbn) pattern/entropy scoring (no cracking involved).
 2. **Real-world attack test** — your own test password is hashed, then **hashcat** and **John the Ripper** actually attempt to crack that hash (dictionary attack, plus a time-boxed brute-force for short passwords), run as local child processes.
 
-> ⚠️ **Use only on passwords you own for testing.** Never paste in a real account's credentials. Nothing you type is persisted — hashes and results exist only for the duration of one request, and temp files are deleted immediately after each run.
+> ⚠️ **Use only on passwords you own for testing.** Never paste in a real account's credentials. By default nothing you type is persisted — hashes and results exist only for the duration of one request, and temp files are deleted immediately after each run. Storage (an analysis log and a password vault) is **opt-in** — see below.
 
 ## 1. Install the cracking tools (Windows)
 
@@ -51,7 +51,22 @@ npm run dev
 
 Open http://localhost:3000, enter one or more test passwords (one per line, max 5), pick a hash algorithm, and click **Analyze**. Each run can take up to ~40 seconds per password (dictionary + brute-force time budgets).
 
-## 3. Run the test suite
+## 3. Optional: storage (analysis log + password vault)
+
+Unset by default — the app is fully stateless until you configure a DB.
+
+```bash
+MONGODB_URI="mongodb://localhost:27017/pw-strength"  # enables storage at all
+VAULT_SECRET="a long random string"                   # required for the vault specifically
+```
+
+- **`MONGODB_URI`** — when set, every `/api/analyze` run is also logged (viewable at `/history`), and `/vault` becomes usable instead of showing a "not configured" notice.
+- **`VAULT_SECRET`** — the vault encrypts every saved password at rest (AES-256-GCM, key derived from this secret) before writing it to Mongo; without it, vault writes fail loudly instead of ever storing plaintext.
+- `/vault` is a small password manager with a twist: every saved entry gets an instant heuristic grade, and a **"Run real crack test"** button that throws an actual hashcat/John attack at it on demand — same pipeline the analyzer page uses.
+- `/history` lists past `/api/analyze` runs (password, score, cracked/not), most recent first.
+- **Known ceiling:** there's no login/master-password gate on the vault — anyone who can reach the running app can list, reveal, and delete every entry. Fine for a local single-user instance; add an auth layer before exposing this on a shared network.
+
+## 4. Run the test suite
 
 ```bash
 npm test
@@ -68,6 +83,9 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a full file-by-file and concept-by-
 - `lib/crack.ts` — spawns `hashcat` (dictionary `-a 0`, then brute-force `-a 3` if the password is ≤7 chars) and `john` (dictionary attack + `--show` cross-check) against the hash, each capped at 20s wall-clock.
 - `lib/parseOutput.ts` — pure functions that read hashcat's `-o` outfile and John's `--show` stdout to determine whether the hash was cracked.
 - `app/api/analyze/route.ts` — orchestrates the above per submitted password, bounded to 5 passwords/request.
+- `lib/db.ts` — lazy Mongo connection, `null` when `MONGODB_URI` is unset so every caller degrades gracefully.
+- `lib/analysis-log.ts` + `app/api/history/route.ts` — optional persisted log of past analyze runs.
+- `lib/vault-crypto.ts` + `lib/vault.ts` + `app/api/vault/**` — the optional password vault: AES-256-GCM encryption at rest, instant grading, and on-demand real crack tests reusing `lib/crack.ts`.
 - `data/common-passwords.txt` — 100,000 real-world passwords by frequency ([SecLists](https://github.com/danielmiessler/SecLists)' `xato-net-10-million-passwords-100000.txt`, MIT licensed — see Attribution below), so the dictionary attack reflects actual breach data out of the box. Point `COMMON_PASSWORDS_WORDLIST` in `lib/crack.ts` at an even larger list (e.g. the full `xato-net-10-million-passwords.txt`, or `rockyou.txt`) for more coverage — dictionary attacks stay fast even at this size (hashcat/John are comparing hashes, not doing anything CPU-heavy per word), so the limiting factor is repo size, not runtime.
 
 ## Attribution
